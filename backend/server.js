@@ -17,7 +17,10 @@ connectCloudinary();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({
-  origin: "https://syncare-client.onrender.com",
+  origin: [
+    "https://syncare-client.onrender.com", 
+    "https://syncare-admin.onrender.com"  
+  ],
   credentials: true
 }));
 
