@@ -16,7 +16,10 @@ connectCloudinary();
 //middleWare
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
+app.use(cors({
+  origin: "https://syncare-client.onrender.com",
+  credentials: true
+}));
 
 //api endpoint 
 //localhost: 4000/api/admin
