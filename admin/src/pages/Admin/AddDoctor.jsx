@@ -11,14 +11,13 @@ const AddDoctor = () => {
   const [password, setPassword] = useState("");
   const [experience, setExperience] = useState("1 Year");
   const [fees, setFees] = useState("");
-  // const [education, setEducation] = useState("");
   const [about, setAbout] = useState("");
   const [speciality, setSpeciality] = useState("General physician");
   const [degree, setDegree] = useState("");
   const [address1, setAddress1] = useState("");
   const [address2, setAddress2] = useState("");
 
-  const { backendUrl, adminToken } = useContext(AdminContext);
+  const { backendUrl, adminToken} = useContext(AdminContext);
 
   const onSubmitHandler = async (event) => {
     event.preventDefault();
