@@ -5,7 +5,8 @@ import jwt from "jsonwebtoken";
 import { v2 as cloudinary } from "cloudinary";
 import doctorModel from "../model/doctorModel.js";
 import appointmentModel from "../model/appointmentModel.js";
-import razorpay from 'razorpay'
+import razorpay from 'razorpay';
+import { notifyUser, notifyDoctor, notifyAppointmentUpdate } from '../socket/socket.js';
 
 //API to register user
 const registerUser = async (req, res) => {
@@ -230,6 +231,13 @@ const bookAppointment = async (req, res) => {
         
         await newAppointment.save();
         
+        // Emit Socket.IO notification to doctor
+        const io = req.app.get('io');
+        if (io) {
+            notifyDoctor(io, docId, `New appointment booked for ${slotDate} at ${slotTime}`, 'appointment');
+            notifyUser(io, userId, `Appointment booked successfully for ${slotDate} at ${slotTime}`, 'success');
+        }
+        
         return res.json({
           success: true,
           message: "Appointment booked successfully",
@@ -295,6 +303,13 @@ const cancelAppointment = async(req, res) => {
     slots_booked[slotDate] = slots_booked[slotDate].filter(e => e !== slotTime);
 
     await doctorModel.findByIdAndUpdate(docId, {slots_booked})
+
+    // Emit Socket.IO notification
+    const io = req.app.get('io');
+    if (io) {
+        notifyDoctor(io, docId, `Appointment cancelled for ${slotDate} at ${slotTime}`, 'cancellation');
+        notifyUser(io, userId, `Appointment cancelled successfully`, 'info');
+    }
 
     res.json({
       success: true,

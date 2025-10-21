@@ -1,0 +1,77 @@
+# --- Node & Monorepo dependencies ---
+**/node_modules/
+**/.pnp
+**/.pnp.js
+
+# --- Logs ---
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# --- Environment files (keep examples) ---
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+
+# --- Build outputs ---
+**/dist/
+**/build/
+**/coverage/
+**/.next/
+**/.nuxt/
+**/.output/
+
+# --- Tool caches ---
+**/.cache/
+**/.turbo/
+**/.vite/
+**/.parcel-cache/
+**/.eslintcache
+**/*.tsbuildinfo
+
+# --- IDE / Editor ---
+.vscode/
+**/.vscode/
+.idea/
+**/.idea/
+*.swp
+*.swo
+
+# --- OS files ---
+.DS_Store
+**/.DS_Store
+Thumbs.db
+**/Thumbs.db
+desktop.ini
+
+# --- Testing / Reports ---
+**/junit.xml
+**/test-results/
+
+# --- Local files ---
+**/.env.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
+
+# --- Uploads / temp (if generated locally) ---
+**/tmp/
+**/temp/
+**/uploads/
+
+# --- Cursor / Agent tooling ---
+.cursor/
+.agent-tools/
+
+# --- Misc ---
+*.pid
+*.seed
+*.pid.lock
+

@@ -44,16 +44,18 @@ This monorepo contains three interconnected applications:
 - 💳 **Payment Integration** - Razorpay payment gateway (ready for implementation)
 - 📱 **Responsive Design** - Mobile-first approach with Tailwind CSS
 - 🖼️ **File Uploads** - Cloudinary integration for profile images
-- 🔔 **Real-time Notifications** - Toast notifications for user feedback
+- 🔔 **Real-time Notifications** - Socket.IO powered live notifications for appointment updates
+- ⚡ **Real-time Communication** - Instant doctor-patient notifications via WebSocket connections
 
 ---
 
 ## Tech Stack
 
-- Backend: Node.js, Express 5, Mongoose 8, JWT, bcrypt, Multer, Cloudinary, CORS, dotenv
-- Frontend: React 19, Vite, React Router, React Toastify, Tailwind CSS 4
+- Backend: Node.js, Express 5, Mongoose 8, JWT, bcrypt, Multer, Cloudinary, CORS, dotenv, Socket.IO
+- Frontend: React 19, Vite, React Router, React Toastify, Tailwind CSS 4, Socket.IO Client
 - Database: MongoDB (Atlas or self-hosted)
 - Payments: Razorpay SDK (optional)
+- Real-time: Socket.IO for live notifications and WebSocket communication
 
 ---
 
@@ -62,7 +64,7 @@ This monorepo contains three interconnected applications:
 ```text
 prescripto/
   admin/                 # Admin/Doctor portal (React + Vite)
-  backend/               # REST API server (Express + MongoDB)
+  backend/               # REST API server (Express + MongoDB + Socket.IO)
   client/                # Patient web app (React + Vite)
   readme.md
 ```
@@ -324,6 +326,88 @@ isCompleted: Boolean (default: false)
 
 ---
 
+## 🔌 Socket.IO Real-time Features
+
+### Real-time Notifications System
+
+The platform now includes Socket.IO for instant communication between patients and doctors:
+
+#### Backend Socket.IO Setup
+- **Authentication**: JWT-based socket connection authentication
+- **Room Management**: Users and doctors join personal rooms using MongoDB _id
+- **Event Handling**: Real-time appointment notifications and updates
+- **Connection Logging**: Server logs show "User <userId> joined room" / "Doctor <doctorId> joined room"
+
+#### Frontend Socket.IO Integration
+- **React Context**: Socket.IO context providers for both client and admin apps
+- **Real-time Notifications**: Live notification center with connection status
+- **Event Listeners**: Automatic reconnection and connection state management
+- **Notification Types**: Appointment booking, cancellation, confirmation, and general info
+
+#### Key Socket.IO Events
+```javascript
+// Server-side events
+- 'connect' - User/doctor connects
+- 'disconnect' - User/doctor disconnects  
+- 'joinRoom' - Join specific room
+- 'sendNotification' - Send notification to user
+- 'notification' - Receive notification (client-side)
+```
+
+#### Real-time Features
+- **Appointment Booking**: Instant doctor notifications when patients book appointments
+- **Appointment Cancellation**: Real-time updates when appointments are cancelled
+- **Connection Status**: Visual indicators for WebSocket connection status
+- **Notification Management**: Clear, remove, and manage notifications in real-time
+
+#### Socket.IO Files Structure
+```
+backend/
+  socket/
+    socket.js              # Socket.IO server setup and event handlers
+  controllers/
+    userController.js      # Updated with Socket.IO notifications
+  server.js                 # HTTP server with Socket.IO integration
+
+client/src/
+  context/
+    socketContext.js        # Socket.IO React context
+  components/
+    NotificationCenter.jsx  # Real-time notification component
+    SocketExample.jsx       # Example Socket.IO usage
+
+admin/src/
+  context/
+    socketContext.js        # Socket.IO React context for admin
+  components/
+    NotificationCenter.jsx  # Admin notification component
+```
+
+#### Usage Example
+```jsx
+import { useSocket } from '../context/socketContext';
+
+const MyComponent = () => {
+  const { socket, notifications, isConnected, joinRoom, sendNotification } = useSocket();
+  
+  // Join room on mount
+  useEffect(() => {
+    if (socket && isConnected) {
+      joinRoom('user-room');
+    }
+  }, [socket, isConnected, joinRoom]);
+
+  return (
+    <div>
+      <p>Connected: {isConnected ? 'Yes' : 'No'}</p>
+      <p>Notifications: {notifications.length}</p>
+    </div>
+  );
+};
+```
+
+---
+
 ## Frontend Apps
 
 Both `client` and `admin` are Vite + React apps and share similar DX.
@@ -368,6 +452,8 @@ Replace those files to update branding (favicons reference the client logo by de
     "multer": "^2.0.1",
     "nodemon": "^3.1.10",
     "razorpay": "^2.9.6",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "validator": "^13.15.15"
   }
 }
@@ -383,7 +469,8 @@ Replace those files to update branding (favicons reference the client logo by de
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.2",
-    "react-toastify": "^11.0.5"
+    "react-toastify": "^11.0.5",
+    "socket.io-client": "^4.8.1"
   }
 }
 ```
@@ -399,6 +486,7 @@ Replace those files to update branding (favicons reference the client logo by de
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.3",
     "react-toastify": "^11.0.5",
+    "socket.io-client": "^4.8.1",
     "tailwindcss": "^4.1.11"
   }
 }
@@ -441,6 +529,17 @@ Serve the built frontends (from `dist/`) behind your preferred reverse proxy (Ng
 - Images not uploading: Confirm Cloudinary credentials and Multer form field names
 - JWT errors: Ensure `JWT_SECRET` is set and tokens are sent in `Authorization: Bearer <token>` header
 - Vite port conflicts: Vite will auto-pick a new port; look at terminal output
+- **Socket.IO connection issues:**
+  - Check if backend is running on port 4000
+  - Verify JWT token in localStorage for authentication
+  - Check CORS settings allow localhost:5173 and localhost:5174
+  - Ensure WebSocket connections are not blocked by firewall
+  - Check browser console for Socket.IO connection errors
+- **Real-time notifications not working:**
+  - Verify user/doctor is connected (check connection status indicator)
+  - Ensure target user/doctor is online and authenticated
+  - Check if rooms are properly joined
+  - Verify Socket.IO events are being emitted from controllers
 
 ---
 
@@ -558,6 +657,14 @@ BASE_URL=https://your-domain.com
 - [ ] Admin panel access and doctor management
 - [ ] Responsive design on mobile/tablet
 - [ ] Error handling and validation
+- [ ] **Socket.IO real-time notifications**
+  - [ ] User connects and joins room
+  - [ ] Doctor connects and joins room
+  - [ ] Appointment booking triggers real-time notifications
+  - [ ] Appointment cancellation triggers real-time notifications
+  - [ ] Connection status indicators work correctly
+  - [ ] Notification center displays and manages notifications
+  - [ ] Cross-browser real-time communication
 
 ### API Testing with Postman
 
@@ -596,6 +703,8 @@ Import the following collection structure:
 - Redis caching for session management
 - Rate limiting with express-rate-limit
 - Compression middleware for API responses
+- Socket.IO connection pooling and room management
+- WebSocket message throttling for high-frequency updates
 
 ## 🤝 Contributing
 
