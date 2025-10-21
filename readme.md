@@ -30,11 +30,12 @@ cd ../admin && npm run dev
 
 This monorepo contains three interconnected applications:
 
-| App | Purpose | Tech Stack | Port |
-|-----|---------|------------|------|
-| **Backend** | REST API Server | Node.js, Express, MongoDB | `4000` |
-| **Client** | Patient Portal | React 19, Vite, Tailwind | `5173` |
-| **Admin** | Admin/Doctor Portal | React 19, Vite, Tailwind | `5174` |
+| App | Purpose | Tech Stack | Port | Live Demo |
+|-----|---------|------------|------|-----------|
+| **Backend** | REST API Server | Node.js, Express, MongoDB | `4000` | N/A |
+| **Client** | Patient Portal | React 19, Vite, Tailwind | `5173` | [Visit Client Portal](https://syncare-client.onrender.com/) |
+| **Admin** | Admin/Doctor Portal | React 19, Vite, Tailwind | `5174` | [Visit Admin Portal](https://syncare-admin.onrender.com) |
+
 
 ### ✨ Key Features
 
