@@ -1,14 +1,16 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useContext } from 'react'
 import { DoctorContext } from '../../context/DoctorContext'
 import { useEffect } from 'react'
 import { AppContext } from '../../context/AppContext'
 import { assets } from '../../assets/assets_admin/assets'
+import socket from '../../socket'
 
 function DoctorAppointments() {
 
   const {doctorToken, appointments,  getAppointments, completeAppointment, cancelAppointment } = useContext(DoctorContext)
   const {slotDateFormat, calculateAge , currency} = useContext(AppContext);
+  const [notifications, setNotifications] = useState([]);
 
 
   useEffect(() => {
@@ -16,6 +18,32 @@ function DoctorAppointments() {
       getAppointments();
      }
   }, [doctorToken])
+
+  // Socket.IO real-time updates
+  useEffect(() => {
+    const doctorId = localStorage.getItem('doctorId');
+    
+    if (doctorId && doctorToken) {
+      // Register doctor when component mounts
+      socket.emit("registerDoctor", doctorId);
+
+      // Listen for real-time notifications
+      socket.on("notification", (data) => {
+        console.log("Received real-time notification:", data);
+        setNotifications((prev) => [data, ...prev]);
+        
+        // Refresh appointments when relevant notifications arrive
+        if (data.type === 'appointment' || data.type === 'cancellation' || data.type === 'completion' || data.type === 'payment') {
+          getAppointments();
+        }
+      });
+
+      // Cleanup listeners when unmounted
+      return () => {
+        socket.off("notification");
+      };
+    }
+  }, [doctorToken]);
 
 
   return (

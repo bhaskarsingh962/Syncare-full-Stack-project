@@ -6,7 +6,6 @@ import { v2 as cloudinary } from "cloudinary";
 import doctorModel from "../model/doctorModel.js";
 import appointmentModel from "../model/appointmentModel.js";
 import razorpay from 'razorpay';
-import { notifyUser, notifyDoctor, notifyAppointmentUpdate } from '../socket/socket.js';
 
 //API to register user
 const registerUser = async (req, res) => {
@@ -55,6 +54,7 @@ const registerUser = async (req, res) => {
     res.json({
       success: true,
       token,
+      userId: user._id,
     });
   } catch (error) {
     console.log(error);
@@ -87,6 +87,7 @@ const loginUser = async (req, res) => {
       return res.json({
         success: true,
         token,
+        userId: user._id,
       });
     } else {
       return res.json({
@@ -231,11 +232,26 @@ const bookAppointment = async (req, res) => {
         
         await newAppointment.save();
         
-        // Emit Socket.IO notification to doctor
+        // Emit Socket.IO notification to doctor and user
         const io = req.app.get('io');
-        if (io) {
-            notifyDoctor(io, docId, `New appointment booked for ${slotDate} at ${slotTime}`, 'appointment');
-            notifyUser(io, userId, `Appointment booked successfully for ${slotDate} at ${slotTime}`, 'success');
+        const onlineDoctors = req.app.get('onlineDoctors');
+        const onlineUsers = req.app.get('onlineUsers');
+        
+        const doctorSocketId = onlineDoctors[docId];
+        const userSocketId = onlineUsers[userId];
+
+        if (doctorSocketId) {
+            io.to(doctorSocketId).emit("notification", {
+                message: `New appointment booked for ${slotDate} at ${slotTime}`,
+                type: "appointment",
+            });
+        }
+
+        if (userSocketId) {
+            io.to(userSocketId).emit("notification", {
+                message: `Appointment booked successfully for ${slotDate} at ${slotTime}`,
+                type: "success",
+            });
         }
         
         return res.json({
@@ -306,9 +322,24 @@ const cancelAppointment = async(req, res) => {
 
     // Emit Socket.IO notification
     const io = req.app.get('io');
-    if (io) {
-        notifyDoctor(io, docId, `Appointment cancelled for ${slotDate} at ${slotTime}`, 'cancellation');
-        notifyUser(io, userId, `Appointment cancelled successfully`, 'info');
+    const onlineDoctors = req.app.get('onlineDoctors');
+    const onlineUsers = req.app.get('onlineUsers');
+    
+    const doctorSocketId = onlineDoctors[docId];
+    const userSocketId = onlineUsers[userId];
+
+    if (doctorSocketId) {
+        io.to(doctorSocketId).emit("notification", {
+            message: `Appointment cancelled for ${slotDate} at ${slotTime}`,
+            type: "cancellation",
+        });
+    }
+
+    if (userSocketId) {
+        io.to(userSocketId).emit("notification", {
+            message: `Appointment cancelled successfully`,
+            type: "info",
+        });
     }
 
     res.json({
@@ -376,10 +407,33 @@ const verifyRazorpay = async (req, res) => {
     const orderinfo = await razorpayInstance.orders.fetch(razorpay_order_id);
 
     if(orderinfo.status === 'paid'){
-      await appointmentModel.findByIdAndUpdate(orderinfo.receipt, {payment: true});
+      const appointment = await appointmentModel.findByIdAndUpdate(orderinfo.receipt, {payment: true});
+      
+      // Emit Socket.IO notification for payment success
+      const io = req.app.get('io');
+      const onlineDoctors = req.app.get('onlineDoctors');
+      const onlineUsers = req.app.get('onlineUsers');
+      
+      const doctorSocketId = onlineDoctors[appointment.docId];
+      const userSocketId = onlineUsers[appointment.userId];
+
+      if (doctorSocketId) {
+          io.to(doctorSocketId).emit("notification", {
+              message: `Payment received for appointment on ${appointment.slotDate} at ${appointment.slotTime}`,
+              type: "payment",
+          });
+      }
+
+      if (userSocketId) {
+          io.to(userSocketId).emit("notification", {
+              message: `Payment successful for appointment on ${appointment.slotDate} at ${appointment.slotTime}`,
+              type: "success",
+          });
+      }
+      
       res.json({
         success: true,
-        message: 'Paymet Succesful',
+        message: 'Payment Successful',
       })
     }else{
       res.json({

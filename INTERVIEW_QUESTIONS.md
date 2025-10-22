@@ -835,6 +835,947 @@ const handleAsyncOperation = async () => {
 
 ---
 
+## 🔄 **Socket.IO & Real-time Communication Questions**
+
+### 28. **How did you implement the new Socket.IO architecture and what problems did it solve?**
+
+**Answer:**
+"I redesigned the Socket.IO implementation to solve several critical issues:
+
+**Previous Problems:**
+- Multiple socket connections causing memory leaks
+- Complex JWT authentication in WebSocket connections
+- Inconsistent real-time updates across components
+- Difficult debugging and maintenance
+
+**New Architecture:**
+```javascript
+// Single socket instance per app
+// client/src/socket.js
+const socket = io(import.meta.env.VITE_BACKEND_URL, {
+  withCredentials: true,
+  transports: ["websocket"]
+});
+
+// Simplified registration system
+socket.emit("registerUser", userId);
+socket.on("notification", (data) => {
+  // Handle real-time updates
+});
+```
+
+**Key Improvements:**
+- **Single Connection**: One socket per application, shared across components
+- **Simplified Auth**: Removed JWT middleware, use simple registration events
+- **Global Mappings**: Server maintains onlineUsers, onlineDoctors, onlineAdmins maps
+- **Automatic Cleanup**: Proper listener cleanup prevents memory leaks
+- **Better Performance**: Reduced connection overhead and improved reliability
+
+**Benefits:**
+- **Reliability**: Consistent real-time updates across all components
+- **Performance**: Single connection reduces server load
+- **Maintainability**: Cleaner code with better separation of concerns
+- **Debugging**: Easier to track connection issues and user states"
+
+### 29. **Explain the difference between your old and new Socket.IO implementation.**
+
+**Answer:**
+"The evolution from old to new implementation shows significant architectural improvements:
+
+**Old Implementation:**
+- **Context-based**: Socket.IO managed through React Context
+- **JWT Authentication**: Complex token verification in WebSocket connections
+- **Multiple Connections**: Potential for multiple socket instances
+- **Room-based**: Users joined specific rooms for communication
+
+**New Implementation:**
+- **Direct Socket Usage**: Components import socket directly from dedicated files
+- **Simple Registration**: Basic emit events for user/doctor/admin registration
+- **Single Connection**: One shared socket instance per application
+- **Global Tracking**: Server maintains global mappings of online users
+
+**Technical Comparison:**
+```javascript
+// Old: Context-based with JWT
+const { socket, isConnected } = useSocket();
+socket.emit('joinRoom', userId);
+
+// New: Direct usage with simple registration
+import socket from '../socket';
+socket.emit('registerUser', userId);
+socket.on('notification', handleNotification);
+```
+
+**Why the Change:**
+- **Simplicity**: Easier to understand and maintain
+- **Performance**: Reduced overhead and better connection management
+- **Reliability**: More predictable real-time behavior
+- **Scalability**: Better suited for production environments"
+
+### 30. **How do you handle Socket.IO connection failures and reconnection?**
+
+**Answer:**
+"I implemented **robust connection management** with automatic recovery:
+
+**Connection Failure Handling:**
+```javascript
+// Automatic reconnection with Socket.IO
+const socket = io(backendUrl, {
+  withCredentials: true,
+  transports: ["websocket"],
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+  timeout: 20000
+});
+
+// Connection status monitoring
+socket.on('connect', () => {
+  console.log('Connected:', socket.id);
+  // Re-register user after reconnection
+  socket.emit('registerUser', userId);
+});
+
+socket.on('disconnect', (reason) => {
+  console.log('Disconnected:', reason);
+  // Handle disconnection gracefully
+});
+```
+
+**Reconnection Strategy:**
+- **Automatic Reconnection**: Socket.IO handles reconnection automatically
+- **User Re-registration**: Re-emit registration events after reconnection
+- **State Recovery**: Restore user state and listeners
+- **Error Handling**: Graceful degradation when connection fails
+
+**Benefits:**
+- **Resilience**: System continues working despite network issues
+- **User Experience**: Seamless experience during connection problems
+- **Data Integrity**: No data loss during reconnection
+- **Monitoring**: Clear logging for debugging connection issues"
+
+---
+
+## 🏥 **Healthcare Domain-Specific Questions**
+
+### 31. **How do you ensure HIPAA compliance in your healthcare application?**
+
+**Answer:**
+"HIPAA compliance is **critical** for healthcare applications:
+
+**Data Protection Measures:**
+- **Encryption**: All PHI (Protected Health Information) encrypted at rest and in transit
+- **Access Controls**: Role-based access with audit trails
+- **Data Minimization**: Collect only necessary patient information
+- **Secure Transmission**: HTTPS and secure WebSocket connections
+
+**Technical Implementation:**
+```javascript
+// Data encryption for sensitive information
+const encryptPHI = (data) => {
+  return crypto.encrypt(data, process.env.ENCRYPTION_KEY);
+};
+
+// Audit logging for all data access
+const logDataAccess = (userId, action, patientId) => {
+  auditLogger.log({
+    userId,
+    action,
+    patientId,
+    timestamp: new Date(),
+    ipAddress: req.ip
+  });
+};
+
+// Role-based access control
+const checkPatientAccess = (userId, patientId) => {
+  // Verify user has permission to access patient data
+  return userRole === 'doctor' && hasPatientAccess(userId, patientId);
+};
+```
+
+**Compliance Features:**
+- **Audit Trails**: Complete logging of all data access and modifications
+- **Data Retention**: Automatic cleanup of old data per HIPAA requirements
+- **Access Logging**: Track who accessed what data and when
+- **Secure Storage**: Encrypted database with secure key management
+
+**Business Associate Agreements:**
+- **Cloudinary**: Secure image storage with HIPAA-compliant infrastructure
+- **Razorpay**: Payment processing with PCI DSS compliance
+- **MongoDB**: Database hosting with security certifications"
+
+### 32. **How do you handle patient data privacy and consent management?**
+
+**Answer:**
+"Patient privacy is **paramount** in healthcare applications:
+
+**Privacy by Design:**
+- **Data Minimization**: Collect only essential information
+- **Purpose Limitation**: Use data only for stated purposes
+- **Storage Limitation**: Automatic data cleanup after retention period
+- **Transparency**: Clear privacy policies and data usage explanations
+
+**Consent Management:**
+```javascript
+// Consent tracking
+const consentModel = {
+  patientId: ObjectId,
+  consentType: String, // 'data_processing', 'appointment_booking', 'payment'
+  granted: Boolean,
+  timestamp: Date,
+  ipAddress: String,
+  userAgent: String
+};
+
+// Data access with consent verification
+const accessPatientData = async (userId, patientId) => {
+  const consent = await consentModel.findOne({
+    patientId,
+    consentType: 'data_processing',
+    granted: true
+  });
+  
+  if (!consent) {
+    throw new Error('Patient consent required');
+  }
+  
+  return patientData;
+};
+```
+
+**Privacy Features:**
+- **Anonymization**: Remove PII for analytics and reporting
+- **Right to Erasure**: Complete data deletion upon patient request
+- **Data Portability**: Export patient data in standard formats
+- **Consent Withdrawal**: Allow patients to revoke consent at any time
+
+**Technical Safeguards:**
+- **Encryption**: AES-256 encryption for all sensitive data
+- **Access Logging**: Complete audit trail of data access
+- **Secure APIs**: Rate limiting and input validation
+- **Regular Backups**: Encrypted backups with secure key management"
+
+### 33. **How do you handle medical appointment scheduling conflicts and edge cases?**
+
+**Answer:**
+"Appointment scheduling requires **robust conflict resolution**:
+
+**Conflict Prevention:**
+```javascript
+// Atomic slot booking with conflict detection
+const bookAppointment = async (req, res) => {
+  const session = await mongoose.startSession();
+  
+  try {
+    await session.withTransaction(async () => {
+      // Check slot availability
+      const doctor = await doctorModel.findById(docId).session(session);
+      const isSlotAvailable = !doctor.slots_booked[slotDate]?.includes(slotTime);
+      
+      if (!isSlotAvailable) {
+        throw new Error('Slot not available');
+      }
+      
+      // Atomic update
+      await doctorModel.findByIdAndUpdate(docId, {
+        $push: { [`slots_booked.${slotDate}`]: slotTime }
+      }, { session });
+      
+      // Create appointment
+      await appointmentModel.create([appointmentData], { session });
+    });
+    
+    // Real-time notification
+    notifyDoctor(io, docId, `New appointment: ${slotDate} ${slotTime}`);
+    
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  } finally {
+    session.endSession();
+  }
+};
+```
+
+**Edge Cases Handled:**
+- **Double Booking**: Atomic transactions prevent race conditions
+- **Time Zone Issues**: UTC storage with local time display
+- **Doctor Unavailability**: Real-time slot updates
+- **Emergency Cancellations**: Immediate notification system
+- **Payment Failures**: Rollback appointment creation
+
+**Business Rules:**
+- **Advance Booking**: Minimum 24-hour notice for appointments
+- **Cancellation Policy**: Different rules for patient vs doctor cancellation
+- **Rescheduling**: Allow rescheduling within business hours
+- **No-show Handling**: Automatic status updates and follow-up"
+
+---
+
+## 🚀 **Advanced React & Frontend Questions**
+
+### 34. **How do you implement code splitting and lazy loading in your React application?**
+
+**Answer:**
+"I implemented **strategic code splitting** for optimal performance:
+
+**Route-based Code Splitting:**
+```javascript
+// Lazy load pages for better performance
+const Home = lazy(() => import('./pages/Home'));
+const Doctors = lazy(() => import('./pages/Doctors'));
+const MyAppointments = lazy(() => import('./pages/MyAppointments'));
+const Appointment = lazy(() => import('./pages/Appointment'));
+
+// Route configuration with Suspense
+<Routes>
+  <Route path="/" element={
+    <Suspense fallback={<LoadingSpinner />}>
+      <Home />
+    </Suspense>
+  } />
+  <Route path="/doctors" element={
+    <Suspense fallback={<LoadingSpinner />}>
+      <Doctors />
+    </Suspense>
+  } />
+</Routes>
+```
+
+**Component-level Splitting:**
+```javascript
+// Lazy load heavy components
+const NotificationCenter = lazy(() => import('./components/NotificationCenter'));
+const DoctorProfile = lazy(() => import('./components/DoctorProfile'));
+
+// Conditional loading
+const LazyNotificationCenter = ({ isOpen }) => {
+  if (!isOpen) return null;
+  
+  return (
+    <Suspense fallback={<div>Loading notifications...</div>}>
+      <NotificationCenter />
+    </Suspense>
+  );
+};
+```
+
+**Benefits:**
+- **Faster Initial Load**: Reduced bundle size for initial page load
+- **Better Performance**: Load components only when needed
+- **Improved UX**: Progressive loading with loading states
+- **Bandwidth Optimization**: Reduced data usage for mobile users"
+
+### 35. **How do you handle form validation and user input in your React components?**
+
+**Answer:**
+"I implemented **comprehensive form validation** with multiple layers:
+
+**Client-side Validation:**
+```javascript
+// Real-time validation with custom hooks
+const useFormValidation = (initialValues, validationRules) => {
+  const [values, setValues] = useState(initialValues);
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+
+  const validate = (fieldName, value) => {
+    const rules = validationRules[fieldName];
+    if (!rules) return '';
+
+    for (let rule of rules) {
+      const error = rule(value);
+      if (error) return error;
+    }
+    return '';
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setValues(prev => ({ ...prev, [name]: value }));
+    
+    // Real-time validation
+    const error = validate(name, value);
+    setErrors(prev => ({ ...prev, [name]: error }));
+  };
+
+  return { values, errors, touched, handleChange, setTouched };
+};
+
+// Validation rules
+const validationRules = {
+  email: [
+    (value) => !value ? 'Email is required' : '',
+    (value) => !validator.isEmail(value) ? 'Invalid email format' : ''
+  ],
+  password: [
+    (value) => !value ? 'Password is required' : '',
+    (value) => value.length < 8 ? 'Password must be at least 8 characters' : ''
+  ]
+};
+```
+
+**Form Implementation:**
+```javascript
+const LoginForm = () => {
+  const { values, errors, touched, handleChange, setTouched } = useFormValidation(
+    { email: '', password: '' },
+    validationRules
+  );
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Validate all fields
+    const hasErrors = Object.values(errors).some(error => error);
+    if (hasErrors) return;
+
+    try {
+      const response = await loginUser(values);
+      // Handle success
+    } catch (error) {
+      // Handle server-side validation errors
+      setErrors({ general: error.message });
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        name="email"
+        value={values.email}
+        onChange={handleChange}
+        onBlur={() => setTouched(prev => ({ ...prev, email: true }))}
+        className={errors.email && touched.email ? 'error' : ''}
+      />
+      {errors.email && touched.email && <span className="error">{errors.email}</span>}
+    </form>
+  );
+};
+```
+
+**Benefits:**
+- **User Experience**: Real-time feedback and validation
+- **Data Quality**: Prevent invalid data submission
+- **Accessibility**: Clear error messages and form states
+- **Performance**: Client-side validation reduces server requests"
+
+### 36. **How do you implement responsive design and mobile optimization?**
+
+**Answer:**
+"I used **Tailwind CSS** with a mobile-first approach for optimal responsiveness:
+
+**Mobile-First Design Strategy:**
+```javascript
+// Responsive grid system
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+  {doctors.map(doctor => (
+    <DoctorCard key={doctor._id} doctor={doctor} />
+  ))}
+</div>
+
+// Responsive navigation
+<nav className="flex flex-col md:flex-row items-center justify-between">
+  <div className="hidden md:flex space-x-8">
+    <NavLink to="/doctors">Doctors</NavLink>
+    <NavLink to="/appointments">Appointments</NavLink>
+  </div>
+  <MobileMenu className="md:hidden" />
+</nav>
+
+// Responsive forms
+<form className="w-full max-w-md mx-auto p-4 md:p-6 lg:p-8">
+  <input className="w-full p-3 md:p-4 text-sm md:text-base" />
+</form>
+```
+
+**Touch-Friendly Interactions:**
+```javascript
+// Touch-optimized buttons
+<button className="min-h-[44px] min-w-[44px] p-3 md:p-4 touch-manipulation">
+  Book Appointment
+</button>
+
+// Swipe gestures for mobile
+const useSwipeGesture = (onSwipeLeft, onSwipeRight) => {
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
+
+  const handleTouchStart = (e) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe) onSwipeLeft();
+    if (isRightSwipe) onSwipeRight();
+  };
+
+  return { handleTouchStart, handleTouchMove, handleTouchEnd };
+};
+```
+
+**Performance Optimizations:**
+- **Image Optimization**: WebP format with responsive sizes
+- **Lazy Loading**: Images and components load on demand
+- **Bundle Splitting**: Separate bundles for mobile and desktop
+- **Service Workers**: Offline functionality and caching
+
+**Accessibility Features:**
+- **Screen Reader Support**: Proper ARIA labels and roles
+- **Keyboard Navigation**: Full keyboard accessibility
+- **Color Contrast**: WCAG compliant color schemes
+- **Focus Management**: Clear focus indicators and logical tab order"
+
+---
+
+## 🔧 **Backend & Database Questions**
+
+### 37. **How do you optimize database queries and handle performance in MongoDB?**
+
+**Answer:**
+"I implemented **comprehensive database optimization** strategies:
+
+**Indexing Strategy:**
+```javascript
+// Compound indexes for common queries
+userModel.index({ email: 1 }); // Unique email lookup
+appointmentModel.index({ userId: 1, status: 1 }); // User appointments
+appointmentModel.index({ docId: 1, slotDate: 1, slotTime: 1 }); // Doctor availability
+doctorModel.index({ specialty: 1, location: 1 }); // Doctor search
+
+// Text indexes for search functionality
+doctorModel.index({ 
+  name: 'text', 
+  specialty: 'text', 
+  location: 'text' 
+});
+
+// Partial indexes for performance
+appointmentModel.index(
+  { status: 1, slotDate: 1 },
+  { partialFilterExpression: { status: { $in: ['booked', 'completed'] } } }
+);
+```
+
+**Query Optimization:**
+```javascript
+// Efficient appointment queries
+const getAppointments = async (userId, status = null) => {
+  const query = { userId };
+  if (status) query.status = status;
+  
+  return await appointmentModel
+    .find(query)
+    .populate('docId', 'name specialty location')
+    .select('slotDate slotTime status payment')
+    .sort({ slotDate: 1, slotTime: 1 })
+    .lean(); // Use lean() for read-only queries
+};
+
+// Aggregation for dashboard statistics
+const getDashboardStats = async (doctorId) => {
+  return await appointmentModel.aggregate([
+    { $match: { docId: new ObjectId(doctorId) } },
+    {
+      $group: {
+        _id: '$status',
+        count: { $sum: 1 },
+        totalRevenue: { $sum: '$amount' }
+      }
+    }
+  ]);
+};
+```
+
+**Connection Optimization:**
+```javascript
+// MongoDB connection with optimization
+mongoose.connect(process.env.MONGODB_URI, {
+  maxPoolSize: 10, // Maintain up to 10 socket connections
+  serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
+  socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+  bufferMaxEntries: 0, // Disable mongoose buffering
+  bufferCommands: false, // Disable mongoose buffering
+});
+```
+
+**Performance Monitoring:**
+- **Query Profiling**: Monitor slow queries and optimize
+- **Connection Pooling**: Efficient connection management
+- **Caching Strategy**: Redis for frequently accessed data
+- **Data Archiving**: Move old appointments to archive collections"
+
+### 38. **How do you handle file uploads and image processing in your application?**
+
+**Answer:**
+"I implemented **secure file upload** with Cloudinary integration:
+
+**Multer Configuration:**
+```javascript
+// Secure file upload middleware
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
+```
+
+**Cloudinary Integration:**
+```javascript
+// Image upload with optimization
+const uploadToCloudinary = async (filePath) => {
+  try {
+    const result = await cloudinary.uploader.upload(filePath, {
+      resource_type: "image",
+      transformation: [
+        { width: 500, height: 500, crop: "limit" },
+        { quality: "auto", fetch_format: "auto" },
+        { gravity: "face", crop: "thumb" } // Face detection for profile pics
+      ],
+      folder: "prescripto/doctors", // Organized folder structure
+      public_id: `doctor_${Date.now()}`,
+      overwrite: true
+    });
+    
+    // Clean up local file
+    fs.unlinkSync(filePath);
+    
+    return result.secure_url;
+  } catch (error) {
+    console.error('Cloudinary upload error:', error);
+    throw new Error('Image upload failed');
+  }
+};
+
+// API endpoint for image upload
+app.post('/upload-image', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.json({ success: false, message: 'No file uploaded' });
+    }
+    
+    const imageUrl = await uploadToCloudinary(req.file.path);
+    
+    res.json({ 
+      success: true, 
+      imageUrl,
+      message: 'Image uploaded successfully' 
+    });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+```
+
+**Security Features:**
+- **File Type Validation**: Only allow image files
+- **Size Limits**: Prevent large file uploads
+- **Virus Scanning**: Cloudinary provides built-in security
+- **Secure URLs**: HTTPS URLs for all uploaded images
+- **Access Control**: Private folders with signed URLs when needed"
+
+### 39. **How do you implement caching and session management?**
+
+**Answer:**
+"I implemented **multi-layer caching** for optimal performance:
+
+**Redis Caching Strategy:**
+```javascript
+// Redis configuration
+const redis = require('redis');
+const client = redis.createClient({
+  host: process.env.REDIS_HOST,
+  port: process.env.REDIS_PORT,
+  password: process.env.REDIS_PASSWORD
+});
+
+// Cache middleware
+const cache = (duration) => {
+  return async (req, res, next) => {
+    const key = `cache:${req.originalUrl}`;
+    
+    try {
+      const cached = await client.get(key);
+      if (cached) {
+        return res.json(JSON.parse(cached));
+      }
+      
+      // Store original res.json
+      const originalJson = res.json;
+      res.json = function(data) {
+        // Cache the response
+        client.setex(key, duration, JSON.stringify(data));
+        originalJson.call(this, data);
+      };
+      
+      next();
+    } catch (error) {
+      next();
+    }
+  };
+};
+
+// Usage in routes
+app.get('/doctors', cache(300), getDoctors); // Cache for 5 minutes
+app.get('/appointments/:userId', cache(60), getUserAppointments); // Cache for 1 minute
+```
+
+**Session Management:**
+```javascript
+// JWT-based session management
+const generateToken = (user) => {
+  return jwt.sign(
+    { 
+      id: user._id, 
+      role: user.role,
+      email: user.email 
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: '24h' }
+  );
+};
+
+// Token refresh mechanism
+const refreshToken = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    
+    const user = await userModel.findById(decoded.id);
+    if (!user) {
+      return res.json({ success: false, message: 'User not found' });
+    }
+    
+    const newToken = generateToken(user);
+    res.json({ success: true, token: newToken });
+  } catch (error) {
+    res.json({ success: false, message: 'Invalid refresh token' });
+  }
+};
+```
+
+**Cache Invalidation:**
+```javascript
+// Invalidate cache when data changes
+const invalidateCache = async (pattern) => {
+  const keys = await client.keys(pattern);
+  if (keys.length > 0) {
+    await client.del(keys);
+  }
+};
+
+// Invalidate after appointment booking
+const bookAppointment = async (req, res) => {
+  // ... booking logic
+  
+  // Invalidate related caches
+  await invalidateCache('cache:/appointments/*');
+  await invalidateCache('cache:/doctors/*');
+  
+  res.json({ success: true, appointment });
+};
+```
+
+**Benefits:**
+- **Performance**: Reduced database load and faster response times
+- **Scalability**: Handle more concurrent users
+- **User Experience**: Faster page loads and smoother interactions
+- **Cost Efficiency**: Reduced server resources and database queries"
+
+---
+
+## 🎯 **System Design & Architecture Questions**
+
+### 40. **How would you scale this application to handle 100,000+ users?**
+
+**Answer:**
+"Scaling to 100,000+ users requires **comprehensive system design**:
+
+**Horizontal Scaling Strategy:**
+```javascript
+// Load balancer configuration
+const express = require('express');
+const cluster = require('cluster');
+const numCPUs = require('os').cpus().length;
+
+if (cluster.isMaster) {
+  // Fork workers
+  for (let i = 0; i < numCPUs; i++) {
+    cluster.fork();
+  }
+  
+  cluster.on('exit', (worker) => {
+    console.log(`Worker ${worker.process.pid} died`);
+    cluster.fork(); // Restart worker
+  });
+} else {
+  // Worker process
+  const app = express();
+  // ... application setup
+}
+```
+
+**Database Scaling:**
+- **Read Replicas**: Separate read and write operations
+- **Sharding**: Partition data by user ID or geographic region
+- **Connection Pooling**: Efficient database connection management
+- **Caching Layer**: Redis cluster for session and data caching
+
+**Microservices Architecture:**
+```javascript
+// Service separation
+const services = {
+  userService: 'http://user-service:3001',
+  appointmentService: 'http://appointment-service:3002',
+  notificationService: 'http://notification-service:3003',
+  paymentService: 'http://payment-service:3004'
+};
+
+// API Gateway
+const apiGateway = express();
+apiGateway.use('/api/users', proxy(services.userService));
+apiGateway.use('/api/appointments', proxy(services.appointmentService));
+apiGateway.use('/api/notifications', proxy(services.notificationService));
+```
+
+**Real-time Scaling:**
+- **Socket.IO Clustering**: Redis adapter for multi-server Socket.IO
+- **Message Queues**: RabbitMQ for reliable message delivery
+- **CDN Integration**: Global content delivery for static assets
+- **Auto-scaling**: Kubernetes for automatic scaling based on load
+
+**Monitoring & Observability:**
+- **APM Tools**: New Relic or DataDog for performance monitoring
+- **Log Aggregation**: ELK stack for centralized logging
+- **Metrics**: Prometheus and Grafana for system metrics
+- **Alerting**: Automated alerts for system issues"
+
+### 41. **How do you handle data consistency in a distributed system?**
+
+**Answer:**
+"Data consistency in distributed systems requires **careful design**:
+
+**Eventual Consistency Strategy:**
+```javascript
+// Event-driven architecture
+const eventBus = {
+  emit: (event, data) => {
+    // Publish event to message queue
+    messageQueue.publish(event, data);
+  },
+  
+  on: (event, handler) => {
+    // Subscribe to events
+    messageQueue.subscribe(event, handler);
+  }
+};
+
+// Appointment booking with events
+const bookAppointment = async (appointmentData) => {
+  const session = await mongoose.startSession();
+  
+  try {
+    await session.withTransaction(async () => {
+      // Create appointment
+      const appointment = await appointmentModel.create([appointmentData], { session });
+      
+      // Emit events for other services
+      eventBus.emit('appointment.created', {
+        appointmentId: appointment._id,
+        userId: appointment.userId,
+        docId: appointment.docId,
+        timestamp: new Date()
+      });
+    });
+  } finally {
+    session.endSession();
+  }
+};
+
+// Event handlers for consistency
+eventBus.on('appointment.created', async (data) => {
+  // Update doctor's available slots
+  await updateDoctorSlots(data.docId, data.slotDate, data.slotTime);
+  
+  // Send notification
+  await sendNotification(data.userId, 'Appointment confirmed');
+  
+  // Update analytics
+  await updateAnalytics('appointment_booked', data);
+});
+```
+
+**Saga Pattern for Complex Transactions:**
+```javascript
+// Saga for appointment booking with payment
+const appointmentSaga = {
+  steps: [
+    { name: 'reserveSlot', action: reserveSlot, compensation: releaseSlot },
+    { name: 'createAppointment', action: createAppointment, compensation: deleteAppointment },
+    { name: 'processPayment', action: processPayment, compensation: refundPayment },
+    { name: 'sendConfirmation', action: sendConfirmation, compensation: sendCancellation }
+  ],
+  
+  execute: async (data) => {
+    const completedSteps = [];
+    
+    try {
+      for (const step of this.steps) {
+        await step.action(data);
+        completedSteps.push(step);
+      }
+    } catch (error) {
+      // Compensate completed steps
+      for (const step of completedSteps.reverse()) {
+        await step.compensation(data);
+      }
+      throw error;
+    }
+  }
+};
+```
+
+**Consistency Patterns:**
+- **Strong Consistency**: Critical operations like payment processing
+- **Eventual Consistency**: Non-critical data like analytics
+- **Read Your Writes**: Ensure users see their own updates immediately
+- **Monotonic Reads**: Prevent users from seeing older data after newer data"
+
+---
+
 ## 📝 **Interview Tips**
 
 ### **Before the Interview:**

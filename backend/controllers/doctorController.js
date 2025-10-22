@@ -60,6 +60,7 @@ const loginDoctor = async (req, res) => {
         return res.json({
         success: true,
         token,
+        doctorId: doctor._id,
       });
     } else {
       return res.json({
@@ -107,6 +108,29 @@ const appointmentComplete = async (req, res) => {
       await appointmentModel.findByIdAndUpdate(appointmentId, {
         isCompleted: true,
       });
+      
+      // Emit Socket.IO notification for appointment completion
+      const io = req.app.get('io');
+      const onlineDoctors = req.app.get('onlineDoctors');
+      const onlineUsers = req.app.get('onlineUsers');
+      
+      const doctorSocketId = onlineDoctors[docId];
+      const userSocketId = onlineUsers[appointmentData.userId];
+
+      if (doctorSocketId) {
+          io.to(doctorSocketId).emit("notification", {
+              message: `Appointment completed for ${appointmentData.slotDate} at ${appointmentData.slotTime}`,
+              type: "completion",
+          });
+      }
+
+      if (userSocketId) {
+          io.to(userSocketId).emit("notification", {
+              message: `Your appointment on ${appointmentData.slotDate} at ${appointmentData.slotTime} has been completed`,
+              type: "completion",
+          });
+      }
+      
       return res.json({
         success: true,
         message: "Appointment Completed",
@@ -138,6 +162,29 @@ const appointmentCancel = async (req, res) => {
       await appointmentModel.findByIdAndUpdate(appointmentId, {
         cancelled: true,
       });
+      
+      // Emit Socket.IO notification for appointment cancellation
+      const io = req.app.get('io');
+      const onlineDoctors = req.app.get('onlineDoctors');
+      const onlineUsers = req.app.get('onlineUsers');
+      
+      const doctorSocketId = onlineDoctors[docId];
+      const userSocketId = onlineUsers[appointmentData.userId];
+
+      if (doctorSocketId) {
+          io.to(doctorSocketId).emit("notification", {
+              message: `Appointment cancelled for ${appointmentData.slotDate} at ${appointmentData.slotTime}`,
+              type: "cancellation",
+          });
+      }
+
+      if (userSocketId) {
+          io.to(userSocketId).emit("notification", {
+              message: `Your appointment on ${appointmentData.slotDate} at ${appointmentData.slotTime} has been cancelled by the doctor`,
+              type: "cancellation",
+          });
+      }
+      
       return res.json({
         success: true,
         message: "Appointment Cancelled",

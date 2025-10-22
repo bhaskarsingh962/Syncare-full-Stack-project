@@ -1,17 +1,43 @@
-import React from "react";
+import React, { useState } from "react";
 import { useContext } from "react";
 import { AdminContext } from "../../context/AdminContext";
 import { useEffect } from "react";
 import { AppContext } from "../../context/AppContext";
 import { assets } from "../../assets/assets_admin/assets";
+import socket from '../../socket';
 
 const AllAppointments = () => {
   const { adminToken, getAllAppointments, appointments, cancelAppointment } =
     useContext(AdminContext);
   const { calculateAge, slotDateFormat, currency } = useContext(AppContext);
+  const [notifications, setNotifications] = useState([]);
   useEffect(() => {
     if (adminToken) {
       getAllAppointments();
+    }
+  }, [adminToken]);
+
+  // Socket.IO real-time updates
+  useEffect(() => {
+    if (adminToken) {
+      // Register admin when component mounts
+      socket.emit("registerAdmin", 'admin');
+
+      // Listen for real-time notifications
+      socket.on("notification", (data) => {
+        console.log("Received real-time notification:", data);
+        setNotifications((prev) => [data, ...prev]);
+        
+        // Refresh appointments when relevant notifications arrive
+        if (data.type === 'appointment' || data.type === 'cancellation' || data.type === 'completion' || data.type === 'payment') {
+          getAllAppointments();
+        }
+      });
+
+      // Cleanup listeners when unmounted
+      return () => {
+        socket.off("notification");
+      };
     }
   }, [adminToken]);
 

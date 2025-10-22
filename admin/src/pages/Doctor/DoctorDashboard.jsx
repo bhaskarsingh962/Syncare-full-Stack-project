@@ -1,18 +1,46 @@
-import React, { useContext, useEffect } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { assets } from "../../assets/assets_admin/assets";
 import { DoctorContext } from "../../context/DoctorContext";
 import { AppContext } from "../../context/AppContext";
+import socket from '../../socket';
 
 const DoctorDashboard = () => {
   const { doctorToken, dashData, setDashData, getDashData, cancelAppointment , completeAppointment} =
     useContext(DoctorContext);
   const { currency, slotDateFormat } = useContext(AppContext);
+  const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
     if (doctorToken) {
       getDashData();
     }
   }, []);
+
+  // Socket.IO real-time updates
+  useEffect(() => {
+    const doctorId = localStorage.getItem('doctorId');
+    
+    if (doctorId && doctorToken) {
+      // Register doctor when component mounts
+      socket.emit("registerDoctor", doctorId);
+
+      // Listen for real-time notifications
+      socket.on("notification", (data) => {
+        console.log("Received real-time notification:", data);
+        setNotifications((prev) => [data, ...prev]);
+        
+        // Refresh dashboard data when relevant notifications arrive
+        if (data.type === 'appointment' || data.type === 'cancellation' || data.type === 'completion' || data.type === 'payment') {
+          getDashData();
+        }
+      });
+
+      // Cleanup listeners when unmounted
+      return () => {
+        socket.off("notification");
+      };
+    }
+  }, [doctorToken]);
 
   return (
     <div className=" m-5">

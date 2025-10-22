@@ -34,6 +34,7 @@ const Login = () => {
           const {data} = await axios.post(backendUrl + '/api/doctor/login', {email, password});
           if(data.success){
             localStorage.setItem('doctorToken',data.token);
+            localStorage.setItem('doctorId',data.doctorId);
             setDoctorToken(data.token);
             console.log(data.token);
           }else{

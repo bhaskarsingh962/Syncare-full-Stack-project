@@ -101,6 +101,18 @@ BASE_URL=http://localhost:4000
 
 For local development, the frontends typically expect the API at `http://localhost:4000`.
 
+### Frontend Environment Variables
+
+Create `.env` files in both `client/` and `admin/` directories:
+
+```bash
+# client/.env and admin/.env
+VITE_BACKEND_URL=http://localhost:4000
+VITE_RAZORPAY_KEY_ID=your-razorpay-key-id  # Optional, for payments
+```
+
+The `VITE_BACKEND_URL` is used by the Socket.IO client connections and API calls.
+
 ---
 
 ## Installation
@@ -331,81 +343,122 @@ isCompleted: Boolean (default: false)
 
 ### Real-time Notifications System
 
-The platform now includes Socket.IO for instant communication between patients and doctors:
+The platform includes a robust Socket.IO implementation for instant communication between patients, doctors, and admins:
 
-#### Backend Socket.IO Setup
-- **Authentication**: JWT-based socket connection authentication
-- **Room Management**: Users and doctors join personal rooms using MongoDB _id
-- **Event Handling**: Real-time appointment notifications and updates
-- **Connection Logging**: Server logs show "User <userId> joined room" / "Doctor <doctorId> joined room"
+#### Backend Socket.IO Architecture
+- **Single IO Instance**: Centralized Socket.IO server with global user mappings
+- **User Registration**: Simple registration system with `registerUser`, `registerDoctor`, `registerAdmin` events
+- **Global Mappings**: Central tracking of online users, doctors, and admins
+- **Real-time Notifications**: Instant notifications for all appointment-related actions
+- **Connection Management**: Automatic cleanup on disconnect to prevent memory leaks
 
-#### Frontend Socket.IO Integration
-- **React Context**: Socket.IO context providers for both client and admin apps
-- **Real-time Notifications**: Live notification center with connection status
-- **Event Listeners**: Automatic reconnection and connection state management
-- **Notification Types**: Appointment booking, cancellation, confirmation, and general info
+#### Frontend Socket.IO Implementation
+- **Dedicated Socket Files**: Single shared socket connection per app (`client/src/socket.js`, `admin/src/socket.js`)
+- **Direct Socket Usage**: Components directly import and use socket instance
+- **Auto-registration**: Automatic user/doctor/admin registration on component mount
+- **Real-time UI Updates**: Instant React state updates without page refresh
+- **Proper Cleanup**: Socket listeners properly removed on component unmount
 
 #### Key Socket.IO Events
 ```javascript
+// Client-side events
+- 'registerUser' - Register user with userId
+- 'registerDoctor' - Register doctor with doctorId  
+- 'registerAdmin' - Register admin with 'admin'
+- 'notification' - Receive real-time notifications
+
 // Server-side events
-- 'connect' - User/doctor connects
-- 'disconnect' - User/doctor disconnects  
-- 'joinRoom' - Join specific room
-- 'sendNotification' - Send notification to user
-- 'notification' - Receive notification (client-side)
+- 'connect' - Socket connection established
+- 'disconnect' - Socket disconnection with cleanup
+- 'notification' - Emit notifications to specific users
 ```
 
 #### Real-time Features
-- **Appointment Booking**: Instant doctor notifications when patients book appointments
-- **Appointment Cancellation**: Real-time updates when appointments are cancelled
-- **Connection Status**: Visual indicators for WebSocket connection status
-- **Notification Management**: Clear, remove, and manage notifications in real-time
+- **Appointment Booking**: Instant notifications to both user and doctor
+- **Appointment Cancellation**: Real-time updates for all parties (user, doctor, admin)
+- **Payment Processing**: Instant payment confirmation notifications
+- **Appointment Completion**: Real-time completion status updates
+- **Admin Actions**: Live notifications for admin-initiated changes
 
 #### Socket.IO Files Structure
 ```
 backend/
   socket/
-    socket.js              # Socket.IO server setup and event handlers
+    socket.js              # Centralized Socket.IO server with global mappings
   controllers/
-    userController.js      # Updated with Socket.IO notifications
-  server.js                 # HTTP server with Socket.IO integration
+    userController.js      # Socket.IO notifications for booking, cancellation, payment
+    doctorController.js    # Socket.IO notifications for completion, cancellation
+    adminController.js     # Socket.IO notifications for admin actions
+  server.js                # Single IO instance with global mappings
 
 client/src/
+  socket.js                # Dedicated socket connection file
+  pages/
+    MyAppointments.jsx     # Real-time appointment updates
+    Appointment.jsx        # Real-time slot availability updates
   context/
-    socketContext.js        # Socket.IO React context
-  components/
-    NotificationCenter.jsx  # Real-time notification component
-    SocketExample.jsx       # Example Socket.IO usage
+    socketContext.js       # Legacy context (still functional)
 
 admin/src/
+  socket.js                # Dedicated socket connection file
+  pages/
+    Doctor/
+      DoctorDashboard.jsx  # Real-time dashboard updates
+      DoctorAppointments.jsx # Real-time appointment list updates
+    Admin/
+      Dashboard.jsx        # Real-time admin dashboard updates
+      AllAppointments.jsx  # Real-time appointment management
   context/
-    socketContext.js        # Socket.IO React context for admin
-  components/
-    NotificationCenter.jsx  # Admin notification component
+    socketContext.js       # Legacy context (still functional)
 ```
 
-#### Usage Example
+#### Implementation Example
 ```jsx
-import { useSocket } from '../context/socketContext';
+import React, { useEffect, useState } from 'react';
+import socket from '../socket';
 
-const MyComponent = () => {
-  const { socket, notifications, isConnected, joinRoom, sendNotification } = useSocket();
-  
-  // Join room on mount
+const MyComponent = ({ userId }) => {
+  const [notifications, setNotifications] = useState([]);
+
   useEffect(() => {
-    if (socket && isConnected) {
-      joinRoom('user-room');
+    if (userId) {
+      // Register user when component mounts
+      socket.emit("registerUser", userId);
+
+      // Listen for real-time notifications
+      socket.on("notification", (data) => {
+        console.log("Received notification:", data);
+        setNotifications(prev => [data, ...prev]);
+        
+        // Refresh data when relevant notifications arrive
+        if (data.type === 'appointment' || data.type === 'cancellation') {
+          // Trigger data refresh
+        }
+      });
+
+      // Cleanup listeners when unmounted
+      return () => {
+        socket.off("notification");
+      };
     }
-  }, [socket, isConnected, joinRoom]);
+  }, [userId]);
 
   return (
     <div>
-      <p>Connected: {isConnected ? 'Yes' : 'No'}</p>
       <p>Notifications: {notifications.length}</p>
+      {/* Component content */}
     </div>
   );
 };
 ```
+
+#### Real-time Notification Types
+- **appointment**: New appointment bookings
+- **cancellation**: Appointment cancellations
+- **completion**: Appointment completions
+- **payment**: Payment confirmations
+- **success**: General success messages
+- **info**: General information messages
 
 ---
 
@@ -532,15 +585,18 @@ Serve the built frontends (from `dist/`) behind your preferred reverse proxy (Ng
 - Vite port conflicts: Vite will auto-pick a new port; look at terminal output
 - **Socket.IO connection issues:**
   - Check if backend is running on port 4000
-  - Verify JWT token in localStorage for authentication
+  - Verify `VITE_BACKEND_URL` environment variable is set correctly
   - Check CORS settings allow localhost:5173 and localhost:5174
   - Ensure WebSocket connections are not blocked by firewall
   - Check browser console for Socket.IO connection errors
+  - Verify socket.js files are properly imported in components
 - **Real-time notifications not working:**
-  - Verify user/doctor is connected (check connection status indicator)
-  - Ensure target user/doctor is online and authenticated
-  - Check if rooms are properly joined
-  - Verify Socket.IO events are being emitted from controllers
+  - Ensure user/doctor/admin IDs are stored in localStorage after login
+  - Check if components are properly registering with Socket.IO
+  - Verify socket listeners are not being removed prematurely
+  - Check if notification events are being emitted from backend controllers
+  - Ensure proper cleanup of socket listeners on component unmount
+  - Check browser console for Socket.IO event logs
 
 ---
 
@@ -659,13 +715,16 @@ BASE_URL=https://your-domain.com
 - [ ] Responsive design on mobile/tablet
 - [ ] Error handling and validation
 - [ ] **Socket.IO real-time notifications**
-  - [ ] User connects and joins room
-  - [ ] Doctor connects and joins room
-  - [ ] Appointment booking triggers real-time notifications
-  - [ ] Appointment cancellation triggers real-time notifications
-  - [ ] Connection status indicators work correctly
-  - [ ] Notification center displays and manages notifications
-  - [ ] Cross-browser real-time communication
+  - [ ] User connects and registers with Socket.IO
+  - [ ] Doctor connects and registers with Socket.IO
+  - [ ] Admin connects and registers with Socket.IO
+  - [ ] Appointment booking triggers real-time notifications to both user and doctor
+  - [ ] Appointment cancellation triggers real-time notifications to all parties
+  - [ ] Payment processing triggers real-time notifications
+  - [ ] Appointment completion triggers real-time notifications
+  - [ ] UI updates instantly without page refresh
+  - [ ] Socket listeners are properly cleaned up on component unmount
+  - [ ] Cross-browser real-time communication works correctly
 
 ### API Testing with Postman
 
@@ -704,8 +763,10 @@ Import the following collection structure:
 - Redis caching for session management
 - Rate limiting with express-rate-limit
 - Compression middleware for API responses
-- Socket.IO connection pooling and room management
+- Socket.IO single instance architecture with global mappings
+- Efficient user/doctor/admin tracking with automatic cleanup
 - WebSocket message throttling for high-frequency updates
+- Centralized notification system for reduced overhead
 
 ## 🤝 Contributing
 

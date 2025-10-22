@@ -5,6 +5,7 @@ import { assets } from "../assets/assets_client/assets";
 import RelatedDoctors from "../components/RelatedDoctors";
 import { toast } from "react-toastify";
 import axios from "axios";
+import socket from '../socket';
 
 const Appointment = () => {
   const { docId } = useParams();
@@ -18,6 +19,7 @@ const Appointment = () => {
   const [docSlots, setDocSlots] = useState([]);
   const [slotIndex, setSlotIndex] = useState(0);
   const [slotTime, setSlotTime] = useState('');
+  const [notifications, setNotifications] = useState([]);
 
   const fetchDocinfo = async () => {
     const docInfo = doctors.find((doc) => doc._id === docId);
@@ -124,6 +126,33 @@ const Appointment = () => {
   useEffect(() => {
     console.log(docSlots);
   },[docSlots]);
+
+  // Socket.IO real-time updates
+  useEffect(() => {
+    const userId = localStorage.getItem('userId');
+    
+    if (userId && token) {
+      // Register user when component mounts
+      socket.emit("registerUser", userId);
+
+      // Listen for real-time notifications
+      socket.on("notification", (data) => {
+        console.log("Received real-time notification:", data);
+        setNotifications((prev) => [data, ...prev]);
+        
+        // Refresh doctor data when relevant notifications arrive
+        if (data.type === 'appointment' || data.type === 'cancellation') {
+          getDoctorData();
+          getAvailableSlot();
+        }
+      });
+
+      // Cleanup listeners when unmounted
+      return () => {
+        socket.off("notification");
+      };
+    }
+  }, [token, docInfo]);
 
   return (
     docInfo && (

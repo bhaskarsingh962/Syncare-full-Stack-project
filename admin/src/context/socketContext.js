@@ -17,31 +17,37 @@ export const SocketProvider = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    // Get token from localStorage
-    const token = localStorage.getItem('adminToken');
+    // Get tokens from localStorage
+    const adminToken = localStorage.getItem('adminToken');
+    const doctorToken = localStorage.getItem('doctorToken');
     
-    if (token) {
+    if (adminToken || doctorToken) {
       // Initialize socket connection
-      const newSocket = io(import.meta.env.VITE_BACKEND_URL, {
-      auth: {
-      token: token
-     }
-   });
+      const newSocket = io(import.meta.env.VITE_BACKEND_URL);
 
       // Connection event handlers
       newSocket.on('connect', () => {
-        console.log('Admin connected to server');
+        console.log('Connected to server');
         setIsConnected(true);
+        
+        // Register based on token type
+        if (adminToken) {
+          newSocket.emit('registerAdmin', 'admin');
+        } else if (doctorToken) {
+          // Get doctor ID from token or localStorage
+          const doctorId = localStorage.getItem('doctorId') || 'doctor';
+          newSocket.emit('registerDoctor', doctorId);
+        }
       });
 
       newSocket.on('disconnect', () => {
-        console.log('Admin disconnected from server');
+        console.log('Disconnected from server');
         setIsConnected(false);
       });
 
       // Notification handler
       newSocket.on('notification', (data) => {
-        console.log('Admin received notification:', data);
+        console.log('Received notification:', data);
         setNotifications(prev => [...prev, {
           id: Date.now(),
           ...data
@@ -57,24 +63,6 @@ export const SocketProvider = ({ children }) => {
     }
   }, []);
 
-  // Function to join a room
-  const joinRoom = (roomId) => {
-    if (socket) {
-      socket.emit('joinRoom', roomId);
-    }
-  };
-
-  // Function to send notification
-  const sendNotification = (targetUserId, message, type = 'info') => {
-    if (socket) {
-      socket.emit('sendNotification', {
-        targetUserId,
-        message,
-        type
-      });
-    }
-  };
-
   // Function to clear notifications
   const clearNotifications = () => {
     setNotifications([]);
@@ -89,8 +77,6 @@ export const SocketProvider = ({ children }) => {
     socket,
     notifications,
     isConnected,
-    joinRoom,
-    sendNotification,
     clearNotifications,
     removeNotification
   };

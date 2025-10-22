@@ -1,18 +1,44 @@
-import React from "react";
+import React, { useState } from "react";
 import { useContext } from "react";
 import { AdminContext } from "../../context/AdminContext";
 import { useEffect } from "react";
 import { assets } from "../../assets/assets_admin/assets";
 import { AppContext } from "../../context/AppContext";
+import socket from '../../socket';
 
 const Dashboard = () => {
   const { adminToken, getDashData, cancelAppointment, dashData } =
     useContext(AdminContext);
   const { slotDateFormat } = useContext(AppContext);
+  const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
     if (adminToken) {
       getDashData();
+    }
+  }, [adminToken]);
+
+  // Socket.IO real-time updates
+  useEffect(() => {
+    if (adminToken) {
+      // Register admin when component mounts
+      socket.emit("registerAdmin", 'admin');
+
+      // Listen for real-time notifications
+      socket.on("notification", (data) => {
+        console.log("Received real-time notification:", data);
+        setNotifications((prev) => [data, ...prev]);
+        
+        // Refresh dashboard data when relevant notifications arrive
+        if (data.type === 'appointment' || data.type === 'cancellation' || data.type === 'completion' || data.type === 'payment') {
+          getDashData();
+        }
+      });
+
+      // Cleanup listeners when unmounted
+      return () => {
+        socket.off("notification");
+      };
     }
   }, [adminToken]);
 

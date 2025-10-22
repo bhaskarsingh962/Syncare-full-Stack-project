@@ -176,7 +176,7 @@ const appointmentCancel = async(req, res) => {
     await appointmentModel.findByIdAndUpdate(appointmentId, {cancelled: true});
 
     //relasing doctor slot
-    const {docId, slotDate, slotTime} = appointmentData;
+    const {docId, slotDate, slotTime, userId} = appointmentData;
     
     const doctorData = await doctorModel.findById(docId);
 
@@ -185,6 +185,29 @@ const appointmentCancel = async(req, res) => {
     slots_booked[slotDate] = slots_booked[slotDate].filter(e => e !== slotTime);
 
     await doctorModel.findByIdAndUpdate(docId, {slots_booked})
+
+    // Emit Socket.IO notification for admin cancellation
+    const io = req.app.get('io');
+    const onlineDoctors = req.app.get('onlineDoctors');
+    const onlineUsers = req.app.get('onlineUsers');
+    const onlineAdmins = req.app.get('onlineAdmins');
+    
+    const doctorSocketId = onlineDoctors[docId];
+    const userSocketId = onlineUsers[userId];
+
+    if (doctorSocketId) {
+        io.to(doctorSocketId).emit("notification", {
+            message: `Appointment cancelled by admin for ${slotDate} at ${slotTime}`,
+            type: "cancellation",
+        });
+    }
+
+    if (userSocketId) {
+        io.to(userSocketId).emit("notification", {
+            message: `Your appointment on ${slotDate} at ${slotTime} has been cancelled by admin`,
+            type: "cancellation",
+        });
+    }
 
     res.json({
       success: true,

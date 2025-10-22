@@ -17,21 +17,21 @@ export const SocketProvider = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    // Get token from localStorage
+    // Get token and user ID from localStorage
     const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('userId');
     
-    if (token) {
+    if (token && userId) {
       // Initialize socket connection
-      const newSocket = io(import.meta.env.VITE_BACKEND_URL, {
-      auth: {
-      token: token
-      }
-    });
+      const newSocket = io(import.meta.env.VITE_BACKEND_URL);
 
       // Connection event handlers
       newSocket.on('connect', () => {
         console.log('Connected to server');
         setIsConnected(true);
+        
+        // Register user with socket
+        newSocket.emit('registerUser', userId);
       });
 
       newSocket.on('disconnect', () => {
@@ -57,24 +57,6 @@ export const SocketProvider = ({ children }) => {
     }
   }, []);
 
-  // Function to join a room
-  const joinRoom = (roomId) => {
-    if (socket) {
-      socket.emit('joinRoom', roomId);
-    }
-  };
-
-  // Function to send notification
-  const sendNotification = (targetUserId, message, type = 'info') => {
-    if (socket) {
-      socket.emit('sendNotification', {
-        targetUserId,
-        message,
-        type
-      });
-    }
-  };
-
   // Function to clear notifications
   const clearNotifications = () => {
     setNotifications([]);
@@ -89,8 +71,6 @@ export const SocketProvider = ({ children }) => {
     socket,
     notifications,
     isConnected,
-    joinRoom,
-    sendNotification,
     clearNotifications,
     removeNotification
   };

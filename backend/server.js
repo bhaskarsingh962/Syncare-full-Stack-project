@@ -7,7 +7,7 @@ import connectCloudinary from './config/cloudinary.js';
 import adminRouter from './routes/adminRoute.js';
 import doctorRouter from './routes/doctorRoute.js';
 import userRouter from './routes/userRoute.js';
-import { initializeSocket } from './socket/socket.js';
+import initSocket from './socket/socket.js';
 
 
 //app config
@@ -17,11 +17,14 @@ const port = process.env.PORT || 4000;
 connectDB();
 connectCloudinary();
 
-// Initialize Socket.IO
-const io = initializeSocket(server);
+// Initialize Socket.IO with global mappings
+const { io, onlineUsers, onlineDoctors, onlineAdmins } = initSocket(server);
 
-// Make io instance available to routes
+// Make io instance and mappings available to routes
 app.set('io', io);
+app.set('onlineUsers', onlineUsers);
+app.set('onlineDoctors', onlineDoctors);
+app.set('onlineAdmins', onlineAdmins);
 
 //middleWare
 app.use(express.json());

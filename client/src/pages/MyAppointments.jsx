@@ -4,6 +4,7 @@ import { AppContext } from '../context/AppContext';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import {useNavigate} from 'react-router-dom'
+import socket from '../socket';
 
 
 const MyAppointments = () => {
@@ -11,6 +12,7 @@ const MyAppointments = () => {
   const { backendUrl, token, getDoctorData } = useContext(AppContext);  
    
   const [appointment, setAppointment] = useState([]);
+  const [notifications, setNotifications] = useState([]);
 
   const months = ["", "Jan", "Fab", "mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -103,6 +105,32 @@ const MyAppointments = () => {
     getUserAppointments();
    }
   },[token])
+
+  // Socket.IO real-time updates
+  useEffect(() => {
+    const userId = localStorage.getItem('userId');
+    
+    if (userId && token) {
+      // Register user when component mounts
+      socket.emit("registerUser", userId);
+
+      // Listen for real-time notifications
+      socket.on("notification", (data) => {
+        console.log("Received real-time notification:", data);
+        setNotifications((prev) => [data, ...prev]);
+        
+        // Refresh appointments when relevant notifications arrive
+        if (data.type === 'appointment' || data.type === 'cancellation' || data.type === 'completion' || data.type === 'payment') {
+          getUserAppointments();
+        }
+      });
+
+      // Cleanup listeners when unmounted
+      return () => {
+        socket.off("notification");
+      };
+    }
+  }, [token]);
 
   return (
     <div>
