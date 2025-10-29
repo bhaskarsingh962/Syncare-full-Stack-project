@@ -788,7 +788,7 @@ This project is licensed under the ISC License - see the [LICENSE](LICENSE) file
 
 ## 👥 Authors
 
-- **Bhaskar Singh** - *Initial work* - [@bhaskarsingh962](https://github.com/yourusername](https://github.com/bhaskarsingh962))
+-**Bhaskar Singh** – *Initial work* – [@bhaskarsingh962](https://github.com/bhaskarsingh962)
 
 ## 🙏 Acknowledgments
 
