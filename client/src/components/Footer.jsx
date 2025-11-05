@@ -82,7 +82,7 @@ function Footer() {
                 <svg className='mr-2 h-4 w-4' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'>
                   <path strokeLinecap='round' strokeLinejoin='round' d='M3 5h18M8 5V3m8 2V3M5 9h14l-1 11H6L5 9z' />
                 </svg>
-                Mon–Sat: 9:00 AM – 8:00 PM
+                Mon–Sat: 9:00 AM – 10:00 PM
               </li>
               <li className='flex items-center'>
                 <svg className='mr-2 h-4 w-4' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'>

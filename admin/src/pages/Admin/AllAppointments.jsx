@@ -15,7 +15,7 @@ const AllAppointments = () => {
     if (adminToken) {
       getAllAppointments();
     }
-  }, [adminToken]);
+  },[adminToken]);
 
   // Socket.IO real-time updates
   useEffect(() => {

@@ -20,7 +20,7 @@ const DoctorContextProvider = (props) => {
         backendUrl + "/api/doctor/appointments",
         { headers: { doctortoken: doctorToken } }
       );
-
+ 
       if (data.success) {
         setAppointments(data.appointments.reverse());
         console.log(data.appointments.reverse());

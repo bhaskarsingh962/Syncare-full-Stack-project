@@ -183,7 +183,7 @@ const Contact = () => {
                         <h4 className="font-semibold text-gray-800 mb-1">Office Address</h4>
                         <p className="text-gray-600">
                           ABC 000, XYZ<br />
-                          Haridwar, Uttarakhand 00000<br />
+                          Uttarakhand 00000<br />
                           India
                         </p>
                       </div>
@@ -223,7 +223,7 @@ const Contact = () => {
                       <div>
                         <h4 className="font-semibold text-gray-800 mb-1">Business Hours</h4>
                         <p className="text-gray-600">
-                          Monday - Friday: 9:00 AM - 6:00 PM<br />
+                          Monday - Friday: 10:00 AM - 10:00 PM<br />
                           Saturday: 9:00 AM - 2:00 PM<br />
                           Sunday: Closed
                         </p>
@@ -313,7 +313,7 @@ const Contact = () => {
                   <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd"></path>
                 </svg>
                 <p className="text-lg font-medium">Interactive Map</p>
-                <p className="text-sm">ABC 000, XYZ, Haridwar, Uttarakhand 00000</p>
+                <p className="text-sm">ABC 000, XYZ, Uttarakhand 00000</p>
                 <button className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
                   Get Directions
                 </button>

@@ -11,9 +11,7 @@ const calculateAge = (dob) =>  {
     const birthDate = new Date(dob);
 
     let age = today.getFullYear() - birthDate.getFullYear();
-
     return age;
-
 }
 
 const months = ["", "Jan", "Fab", "mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
